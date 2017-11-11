@@ -35,8 +35,9 @@ func single(url string) (*FooBar, error) {
 func TestSingleOK(t *testing.T) {
 	setup()
 	defer teardown()
-	mux.HandleFunc("/foobar", func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "GET", r.Method, "Expected method 'GET', got %s", r.Method)
+	mock.SetHandler(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/foobar", r.RequestURI)
+		require.Equal(t, "GET", r.Method)
 		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json")
@@ -54,8 +55,9 @@ func TestSingleOK(t *testing.T) {
 func TestSingleForbidden(t *testing.T) {
 	setup()
 	defer teardown()
-	mux.HandleFunc("/foobar", func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "GET", r.Method, "Expected method 'GET', got %s", r.Method)
+	mock.SetHandler(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/foobar", r.RequestURI)
+		require.Equal(t, "GET", r.Method)
 		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
 		w.WriteHeader(http.StatusForbidden)
 	})
@@ -66,8 +68,9 @@ func TestSingleForbidden(t *testing.T) {
 func TestSingleWrongFormat(t *testing.T) {
 	setup()
 	defer teardown()
-	mux.HandleFunc("/foobar", func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "GET", r.Method, "Expected method 'GET', got %s", r.Method)
+	mock.SetHandler(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/foobar", r.RequestURI)
+		require.Equal(t, "GET", r.Method)
 		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json")
@@ -77,9 +80,42 @@ func TestSingleWrongFormat(t *testing.T) {
 	require.Contains(t, err.Error(), "invalid character ")
 }
 
+func TestSingleWildcard(t *testing.T) {
+	setup()
+	defer teardown()
+	mock.SetHandler(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "/foobar", r.RequestURI)
+		require.Equal(t, "GET", r.Method)
+		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		fb := FooBar{Foo: "foo", Bar: 2}
+		b := new(bytes.Buffer)
+		json.NewEncoder(b).Encode(fb)
+		w.Write(b.Bytes())
+	})
+	res, err := single(fmt.Sprintf("%s/foobar", server.URL))
+	require.Nil(t, err)
+	require.Equal(t, "foo", res.Foo)
+	require.Equal(t, 2, res.Bar)
+}
+
+type HTTPMock struct {
+	Handler http.HandlerFunc
+}
+
+func (mock *HTTPMock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	mock.Handler(w, r)
+}
+
+func NewHTTPMock() *HTTPMock { return new(HTTPMock) }
+
+func (mock *HTTPMock) SetHandler(handler func(http.ResponseWriter, *http.Request)) {
+	mock.Handler = http.HandlerFunc(handler)
+}
+
 var (
-	// mux is the HTTP request multiplexer used with the test server.
-	mux *http.ServeMux
+	mock *HTTPMock
 
 	// server is a test HTTP server used to provide mock API responses
 	server *httptest.Server
@@ -87,8 +123,8 @@ var (
 
 func setup() {
 	// test server
-	mux = http.NewServeMux()
-	server = httptest.NewServer(mux)
+	mock = NewHTTPMock()
+	server = httptest.NewServer(mock)
 }
 
 func teardown() {
