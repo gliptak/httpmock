@@ -63,6 +63,20 @@ func TestSingleForbidden(t *testing.T) {
 	require.EqualError(t, err, "403")
 }
 
+func TestSingleWrongFormat(t *testing.T) {
+	setup()
+	defer teardown()
+	mux.HandleFunc("/foobar", func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "GET", r.Method, "Expected method 'GET', got %s", r.Method)
+		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, "<>")
+	})
+	_, err := single(fmt.Sprintf("%s/foobar", server.URL))
+	require.Contains(t, err.Error(), "invalid character ")
+}
+
 var (
 	// mux is the HTTP request multiplexer used with the test server.
 	mux *http.ServeMux
