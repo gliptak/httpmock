@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/golang/go/src/pkg/fmt"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"errors"
+	"github.com/stretchr/testify/require"
 )
 
 type FooBar struct {
@@ -23,17 +24,20 @@ func single(url string) (*FooBar, error) {
 	if err != nil {
 		return nil, err
 	}
+	if res.StatusCode != 200 {
+		return nil, errors.New(fmt.Sprintf("%v", res.StatusCode))
+	}
 	fb := new(FooBar)
 	err = json.NewDecoder(res.Body).Decode(fb)
 	return fb, err
 }
 
-func TestSingle(t *testing.T) {
+func TestSingleOK(t *testing.T) {
 	setup()
 	defer teardown()
 	mux.HandleFunc("/foobar", func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "GET", r.Method, "Expected method 'GET', got %s", r.Method)
-		assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		require.Equal(t, "GET", r.Method, "Expected method 'GET', got %s", r.Method)
+		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json")
 		fb := FooBar{Foo: "foo", Bar: 2}
@@ -42,9 +46,21 @@ func TestSingle(t *testing.T) {
 		w.Write(b.Bytes())
 	})
 	res, err := single(fmt.Sprintf("%s/foobar", server.URL))
-	assert.Nil(t, err)
-	assert.Equal(t, "foo", res.Foo)
-	assert.Equal(t, 2, res.Bar)
+	require.Nil(t, err)
+	require.Equal(t, "foo", res.Foo)
+	require.Equal(t, 2, res.Bar)
+}
+
+func TestSingleForbidden(t *testing.T) {
+	setup()
+	defer teardown()
+	mux.HandleFunc("/foobar", func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "GET", r.Method, "Expected method 'GET', got %s", r.Method)
+		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		w.WriteHeader(http.StatusForbidden)
+	})
+	_, err := single(fmt.Sprintf("%s/foobar", server.URL))
+	require.EqualError(t, err, "403")
 }
 
 var (
