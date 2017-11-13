@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"github.com/golang/go/src/pkg/fmt"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 	"errors"
 	"github.com/stretchr/testify/require"
@@ -35,7 +34,7 @@ func single(url string) (*FooBar, error) {
 func TestSingleOK(t *testing.T) {
 	setup()
 	defer teardown()
-	mock.SetHandler(func(w http.ResponseWriter, r *http.Request) {
+	mock.SetHandlers([]http.HandlerFunc{func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/foobar", r.RequestURI)
 		require.Equal(t, "GET", r.Method)
 		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
@@ -45,7 +44,7 @@ func TestSingleOK(t *testing.T) {
 		b := new(bytes.Buffer)
 		json.NewEncoder(b).Encode(fb)
 		w.Write(b.Bytes())
-	})
+	}})
 	res, err := single(fmt.Sprintf("%s/foobar", server.URL))
 	require.Nil(t, err)
 	require.Equal(t, "foo", res.Foo)
@@ -55,12 +54,12 @@ func TestSingleOK(t *testing.T) {
 func TestSingleForbidden(t *testing.T) {
 	setup()
 	defer teardown()
-	mock.SetHandler(func(w http.ResponseWriter, r *http.Request) {
+	mock.SetHandlers([]http.HandlerFunc{func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/foobar", r.RequestURI)
 		require.Equal(t, "GET", r.Method)
 		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
 		w.WriteHeader(http.StatusForbidden)
-	})
+	}})
 	_, err := single(fmt.Sprintf("%s/foobar", server.URL))
 	require.EqualError(t, err, "403")
 }
@@ -68,14 +67,14 @@ func TestSingleForbidden(t *testing.T) {
 func TestSingleWrongFormat(t *testing.T) {
 	setup()
 	defer teardown()
-	mock.SetHandler(func(w http.ResponseWriter, r *http.Request) {
+	mock.SetHandlers([]http.HandlerFunc{func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/foobar", r.RequestURI)
 		require.Equal(t, "GET", r.Method)
 		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, "<>")
-	})
+	}})
 	_, err := single(fmt.Sprintf("%s/foobar", server.URL))
 	require.Contains(t, err.Error(), "invalid character ")
 }
@@ -83,7 +82,7 @@ func TestSingleWrongFormat(t *testing.T) {
 func TestSingleWildcard(t *testing.T) {
 	setup()
 	defer teardown()
-	mock.SetHandler(func(w http.ResponseWriter, r *http.Request) {
+	mock.SetHandlers([]http.HandlerFunc{func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/foobar", r.RequestURI)
 		require.Equal(t, "GET", r.Method)
 		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
@@ -93,40 +92,9 @@ func TestSingleWildcard(t *testing.T) {
 		b := new(bytes.Buffer)
 		json.NewEncoder(b).Encode(fb)
 		w.Write(b.Bytes())
-	})
+	}})
 	res, err := single(fmt.Sprintf("%s/foobar", server.URL))
 	require.Nil(t, err)
 	require.Equal(t, "foo", res.Foo)
 	require.Equal(t, 2, res.Bar)
-}
-
-type HTTPMock struct {
-	Handler http.HandlerFunc
-}
-
-func (mock *HTTPMock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	mock.Handler(w, r)
-}
-
-func NewHTTPMock() *HTTPMock { return new(HTTPMock) }
-
-func (mock *HTTPMock) SetHandler(handler func(http.ResponseWriter, *http.Request)) {
-	mock.Handler = http.HandlerFunc(handler)
-}
-
-var (
-	mock *HTTPMock
-
-	// server is a test HTTP server used to provide mock API responses
-	server *httptest.Server
-)
-
-func setup() {
-	// test server
-	mock = NewHTTPMock()
-	server = httptest.NewServer(mock)
-}
-
-func teardown() {
-	server.Close()
 }
