@@ -3,35 +3,37 @@ package httpmock
 import (
 	"net/http"
 	"net/http/httptest"
+	"testing"
 )
 
-type HTTPMock struct {
+type httpMock struct {
 	Handler []http.HandlerFunc
 	current int
 }
 
-func (mock *HTTPMock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+type HandlerFunc func(w http.ResponseWriter, r *http.Request) interface{}
+
+func (mock *httpMock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func(){mock.current++}()
 	mock.Handler[mock.current](w, r)
 }
 
-func NewHTTPMock() *HTTPMock { return new(HTTPMock) }
+func NewHTTPMock() *httpMock { return new(httpMock) }
 
-func (mock *HTTPMock) SetHandlers(handler []http.HandlerFunc) {
+func (mock *httpMock) SetHandlers(handler []http.HandlerFunc) {
 	mock.Handler = handler
 }
 
 var (
-	mock *HTTPMock
-
 	// server is a test HTTP server used to provide mock API responses
 	server *httptest.Server
 )
 
-func setup() {
+func setup(t *testing.T) *httpMock {
 	// test server
-	mock = NewHTTPMock()
+	mock := NewHTTPMock()
 	server = httptest.NewServer(mock)
+	return mock
 }
 
 func teardown() {

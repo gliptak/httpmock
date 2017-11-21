@@ -32,7 +32,7 @@ func single(url string) (*FooBar, error) {
 }
 
 func TestSingleOK(t *testing.T) {
-	setup()
+	mock := setup(t)
 	defer teardown()
 	mock.SetHandlers([]http.HandlerFunc{func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/foobar", r.RequestURI)
@@ -52,7 +52,7 @@ func TestSingleOK(t *testing.T) {
 }
 
 func TestSingleForbidden(t *testing.T) {
-	setup()
+	mock := setup(t)
 	defer teardown()
 	mock.SetHandlers([]http.HandlerFunc{func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/foobar", r.RequestURI)
@@ -65,7 +65,7 @@ func TestSingleForbidden(t *testing.T) {
 }
 
 func TestSingleWrongFormat(t *testing.T) {
-	setup()
+	mock := setup(t)
 	defer teardown()
 	mock.SetHandlers([]http.HandlerFunc{func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/foobar", r.RequestURI)
@@ -80,7 +80,7 @@ func TestSingleWrongFormat(t *testing.T) {
 }
 
 func TestSingleWildcard(t *testing.T) {
-	setup()
+	mock := setup(t)
 	defer teardown()
 	mock.SetHandlers([]http.HandlerFunc{func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/foobar", r.RequestURI)
