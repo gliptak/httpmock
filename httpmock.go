@@ -7,21 +7,29 @@ import (
 )
 
 type httpMock struct {
-	Handler []http.HandlerFunc
+	steps []Step
 	current int
 }
 
-type HandlerFunc func(w http.ResponseWriter, r *http.Request) interface{}
+type Step struct {
+	CheckRequest func(w http.ResponseWriter, r *http.Request)
+    ReturnResponse func(w http.ResponseWriter, r *http.Request)
+}
 
 func (mock *httpMock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func(){mock.current++}()
-	mock.Handler[mock.current](w, r)
+	if mock.steps[mock.current].CheckRequest != nil {
+		mock.steps[mock.current].CheckRequest(w, r)
+	}
+	if mock.steps[mock.current].ReturnResponse != nil {
+		mock.steps[mock.current].ReturnResponse(w, r)
+	}
 }
 
 func NewHTTPMock() *httpMock { return new(httpMock) }
 
-func (mock *httpMock) SetHandlers(handler []http.HandlerFunc) {
-	mock.Handler = handler
+func (mock *httpMock) AppendStep(step Step) {
+	mock.steps = append(mock.steps, step)
 }
 
 var (

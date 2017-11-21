@@ -34,17 +34,21 @@ func single(url string) (*FooBar, error) {
 func TestSingleOK(t *testing.T) {
 	mock := setup(t)
 	defer teardown()
-	mock.SetHandlers([]http.HandlerFunc{func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/foobar", r.RequestURI)
-		require.Equal(t, "GET", r.Method)
-		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		fb := FooBar{Foo: "foo", Bar: 2}
-		b := new(bytes.Buffer)
-		json.NewEncoder(b).Encode(fb)
-		w.Write(b.Bytes())
-	}})
+	mock.AppendStep(Step {
+		CheckRequest: func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "/foobar", r.RequestURI)
+			require.Equal(t, "GET", r.Method)
+			require.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		},
+		ReturnResponse: func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Content-Type", "application/json")
+			fb := FooBar{Foo: "foo", Bar: 2}
+			b := new(bytes.Buffer)
+			json.NewEncoder(b).Encode(fb)
+			w.Write(b.Bytes())
+		},
+	})
 	res, err := single(fmt.Sprintf("%s/foobar", server.URL))
 	require.Nil(t, err)
 	require.Equal(t, "foo", res.Foo)
@@ -54,12 +58,16 @@ func TestSingleOK(t *testing.T) {
 func TestSingleForbidden(t *testing.T) {
 	mock := setup(t)
 	defer teardown()
-	mock.SetHandlers([]http.HandlerFunc{func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/foobar", r.RequestURI)
-		require.Equal(t, "GET", r.Method)
-		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
-		w.WriteHeader(http.StatusForbidden)
-	}})
+	mock.AppendStep(Step {
+		CheckRequest: func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "/foobar", r.RequestURI)
+			require.Equal(t, "GET", r.Method)
+			require.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		},
+		ReturnResponse: func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+		},
+	})
 	_, err := single(fmt.Sprintf("%s/foobar", server.URL))
 	require.EqualError(t, err, "403")
 }
@@ -67,14 +75,18 @@ func TestSingleForbidden(t *testing.T) {
 func TestSingleWrongFormat(t *testing.T) {
 	mock := setup(t)
 	defer teardown()
-	mock.SetHandlers([]http.HandlerFunc{func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/foobar", r.RequestURI)
-		require.Equal(t, "GET", r.Method)
-		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, "<>")
-	}})
+	mock.AppendStep(Step {
+		CheckRequest: func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "/foobar", r.RequestURI)
+			require.Equal(t, "GET", r.Method)
+			require.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		},
+		ReturnResponse: func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprintf(w, "<>")
+		},
+	})
 	_, err := single(fmt.Sprintf("%s/foobar", server.URL))
 	require.Contains(t, err.Error(), "invalid character ")
 }
@@ -82,17 +94,21 @@ func TestSingleWrongFormat(t *testing.T) {
 func TestSingleWildcard(t *testing.T) {
 	mock := setup(t)
 	defer teardown()
-	mock.SetHandlers([]http.HandlerFunc{func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/foobar", r.RequestURI)
-		require.Equal(t, "GET", r.Method)
-		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		fb := FooBar{Foo: "foo", Bar: 2}
-		b := new(bytes.Buffer)
-		json.NewEncoder(b).Encode(fb)
-		w.Write(b.Bytes())
-	}})
+	mock.AppendStep(Step {
+		CheckRequest: func(w http.ResponseWriter, r *http.Request) {
+			require.Equal(t, "/foobar", r.RequestURI)
+			require.Equal(t, "GET", r.Method)
+			require.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		},
+		ReturnResponse: func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Content-Type", "application/json")
+			fb := FooBar{Foo: "foo", Bar: 2}
+			b := new(bytes.Buffer)
+			json.NewEncoder(b).Encode(fb)
+			w.Write(b.Bytes())
+		},
+	})
 	res, err := single(fmt.Sprintf("%s/foobar", server.URL))
 	require.Nil(t, err)
 	require.Equal(t, "foo", res.Foo)
