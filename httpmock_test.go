@@ -3,11 +3,11 @@ package httpmock
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"github.com/golang/go/src/pkg/fmt"
+	"github.com/stretchr/testify/require"
 	"net/http"
 	"testing"
-	"errors"
-	"github.com/stretchr/testify/require"
 )
 
 type FooBar struct {
@@ -34,7 +34,7 @@ func single(url string) (*FooBar, error) {
 func TestSingleOK(t *testing.T) {
 	mock := setup(t)
 	defer teardown()
-	mock.AppendStep(Step {
+	mock.AppendStep(Step{
 		CheckRequest: func(w http.ResponseWriter, r *http.Request) {
 			require.Equal(t, "/foobar", r.RequestURI)
 			require.Equal(t, "GET", r.Method)
@@ -58,7 +58,7 @@ func TestSingleOK(t *testing.T) {
 func TestSingleForbidden(t *testing.T) {
 	mock := setup(t)
 	defer teardown()
-	mock.AppendStep(Step {
+	mock.AppendStep(Step{
 		CheckRequest: func(w http.ResponseWriter, r *http.Request) {
 			require.Equal(t, "/foobar", r.RequestURI)
 			require.Equal(t, "GET", r.Method)
@@ -75,7 +75,7 @@ func TestSingleForbidden(t *testing.T) {
 func TestSingleWrongFormat(t *testing.T) {
 	mock := setup(t)
 	defer teardown()
-	mock.AppendStep(Step {
+	mock.AppendStep(Step{
 		CheckRequest: func(w http.ResponseWriter, r *http.Request) {
 			require.Equal(t, "/foobar", r.RequestURI)
 			require.Equal(t, "GET", r.Method)
@@ -94,7 +94,7 @@ func TestSingleWrongFormat(t *testing.T) {
 func TestSingleWildcard(t *testing.T) {
 	mock := setup(t)
 	defer teardown()
-	mock.AppendStep(Step {
+	mock.AppendStep(Step{
 		CheckRequest: func(w http.ResponseWriter, r *http.Request) {
 			require.Equal(t, "/foobar", r.RequestURI)
 			require.Equal(t, "GET", r.Method)
@@ -113,4 +113,28 @@ func TestSingleWildcard(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, "foo", res.Foo)
 	require.Equal(t, 2, res.Bar)
+}
+
+func TestEmptyStep(t *testing.T) {
+	mock := setup(t)
+	defer teardown()
+	mock.AppendStep(Step{})
+	_, err := single(fmt.Sprintf("%s/foobar", server.URL))
+	require.EqualError(t, err, "EOF")
+}
+
+func TestOutOfBounds1(t *testing.T) {
+	setup(t)
+	defer teardown()
+	_, err := single(fmt.Sprintf("%s/foobar", server.URL))
+	require.Contains(t, err, "EOF")
+}
+
+func TestOutOfBounds2(t *testing.T) {
+	mock := setup(t)
+	defer teardown()
+	mock.AppendStep(Step{})
+	_, _ = single(fmt.Sprintf("%s/foobar", server.URL))
+	_, err := single(fmt.Sprintf("%s/foobar", server.URL))
+	require.Contains(t, err, "EOF")
 }
