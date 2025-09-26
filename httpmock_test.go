@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"github.com/golang/go/src/pkg/fmt"
+	"fmt"
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"testing"
