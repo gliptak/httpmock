@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ['1.x', 'stable']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go ${{ matrix.go-version }}
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ matrix.go-version }}
+    
+    - name: Initialize Go module if needed
+      run: |
+        if [ ! -f go.mod ]; then
+          go mod init github.com/gliptak/httpmock
+          go mod tidy
+        fi
+    
+    - name: Run tests
+      run: go test -v ./
