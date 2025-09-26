@@ -127,7 +127,7 @@ func TestOutOfBounds1(t *testing.T) {
 	setup(t)
 	defer teardown()
 	_, err := single(fmt.Sprintf("%s/foobar", server.URL))
-	require.Contains(t, err, "EOF")
+	require.Contains(t, err.Error(), "EOF")
 }
 
 func TestOutOfBounds2(t *testing.T) {
@@ -136,5 +136,5 @@ func TestOutOfBounds2(t *testing.T) {
 	mock.AppendStep(Step{})
 	_, _ = single(fmt.Sprintf("%s/foobar", server.URL))
 	_, err := single(fmt.Sprintf("%s/foobar", server.URL))
-	require.Contains(t, err, "EOF")
+	require.Contains(t, err.Error(), "EOF")
 }
